@@ -1,85 +1,64 @@
 pipeline {
-agent any
+    agent any
 
-```
-environment {
-    DOCKERHUB_USERNAME = "yourdockerhubusername"
-    FRONTEND_IMAGE = "webappetp-frontend"
-    MYSQL_IMAGE = "webappetp-mysql"
-}
-
-stages {
-
-    stage('Checkout Source') {
-        steps {
-            checkout scm
-        }
+    environment {
+        DOCKER_USER = "techansh14"
     }
 
-    stage('Build Frontend Image') {
-        steps {
-            script {
-                docker.build(
-                    "${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:${BUILD_NUMBER}",
-                    "./frontend"
-                )
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Frontend Image') {
+            steps {
+                bat 'docker build -t %DOCKER_USER%/webappetp-frontend:v1 frontend'
+            }
+        }
+
+        stage('Build MySQL Image') {
+            steps {
+                bat 'docker build -t %DOCKER_USER%/webappetp-mysql:v1 mysql'
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    bat 'docker login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%'
+                }
+            }
+        }
+
+        stage('Push Frontend Image') {
+            steps {
+                bat 'docker push %DOCKER_USER%/webappetp-frontend:v1'
+            }
+        }
+
+        stage('Push MySQL Image') {
+            steps {
+                bat 'docker push %DOCKER_USER%/webappetp-mysql:v1'
             }
         }
     }
 
-    stage('Build MySQL Image') {
-        steps {
-            script {
-                docker.build(
-                    "${DOCKERHUB_USERNAME}/${MYSQL_IMAGE}:${BUILD_NUMBER}",
-                    "./mysql"
-                )
-            }
+    post {
+        success {
+            echo 'Images pushed successfully'
+        }
+
+        failure {
+            echo 'Pipeline failed'
         }
     }
-
-    stage('Docker Login') {
-        steps {
-            withCredentials([
-                usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )
-            ]) {
-                sh '''
-                echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                '''
-            }
-        }
-    }
-
-    stage('Push Frontend Image') {
-        steps {
-            sh '''
-            docker push ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:${BUILD_NUMBER}
-            '''
-        }
-    }
-
-    stage('Push MySQL Image') {
-        steps {
-            sh '''
-            docker push ${DOCKERHUB_USERNAME}/${MYSQL_IMAGE}:${BUILD_NUMBER}
-            '''
-        }
-    }
-}
-
-post {
-    success {
-        echo 'Images successfully pushed to Docker Hub'
-    }
-
-    failure {
-        echo 'Pipeline failed'
-    }
-}
-```
-
 }
