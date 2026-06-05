@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-db
+
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+
+    ports:
+      - "3306:3306"
+
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
